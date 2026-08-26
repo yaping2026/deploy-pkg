@@ -21,19 +21,24 @@ cp db.js "db.js.bak-$TS" && echo "✅ db.js → db.js.bak-$TS"
 echo ""
 echo "--- [2] 停掉所有server进程（止血：覆盖就是它们干的）---"
 echo "--- 当前进程（含PPID，方便看出守护者） ---"
-ps -eo pid,ppid,stat,lstart,cmd | grep -E "node.*server\.js" | grep -v grep || echo "（无server进程）"
+ps -eo pid,ppid,stat,lstart,cmd | grep -E "node.*server\.js|PM2|pm2|God Daemon" | grep -v grep || echo "（无相关进程）"
 
-# 关键：先杀PM2 daemon！它是元凶（PM2检测到node死会立刻拉起新进程）
-if command -v pm2 >/dev/null 2>&1; then
-  echo "--- 发现PM2，先pm2 kill停掉守护 ---"
-  pm2 kill 2>/dev/null && echo "✅ PM2 daemon已停" || echo "⚠️ pm2 kill异常（可能PM2未运行）"
-  sleep 2
-elif [ -f /root/.pm2 ] || [ -f "$HOME/.pm2" ]; then
-  echo "--- 找到.pm2目录，尝试直接杀PM2 daemon ---"
-  pkill -9 -f "PM2" 2>/dev/null && echo "✅ PM2 daemon已杀" || echo "（无PM2进程）"
-  sleep 2
-else
-  echo "（无PM2，按常规方式杀node）"
+# ★ 关键：杀PM2 daemon（不能依赖pm2命令，pm2可能不在PATH里）★
+echo "--- 第一刀：杀所有PM2守护进程 ---"
+PM2_KILLED=0
+for PID in $(pgrep -f "PM2\|God Daemon" 2>/dev/null); do
+  echo "  killing PM2 daemon PID $PID"; kill -9 $PID 2>/dev/null && PM2_KILLED=1
+done
+pkill -9 -f "God Daemon" 2>/dev/null
+pkill -9 -f "pm2" 2>/dev/null
+sleep 2
+echo "  PM2进程剩余: $(pgrep -f "PM2\|God Daemon" 2>/dev/null | wc -l)"
+
+# 删PM2守护socket和dump（防止PM2 daemon被外部拉起时还能接管）
+if [ -d /root/.pm2 ]; then
+  rm -f /root/.pm2/pm2.sock /root/.pm2/pub.sock /root/.pm2/rpc.sock 2>/dev/null
+  rm -f /root/.pm2/*.pid 2>/dev/null
+  echo "  ✅ 清掉PM2守护socket和pid文件"
 fi
 
 # 从将死的进程里抢救GITHUB_TOKEN（数据合并要用；登录shell里通常没有这个变量）
@@ -45,34 +50,43 @@ for PID in $(pgrep -f "node.*server\.js" 2>/dev/null); do
   fi
 done
 
-# 先用信号优雅退出，给2秒
-for PID in $(pgrep -f "node.*server\.js" 2>/dev/null); do kill -15 $PID 2>/dev/null; done
+# 杀node
+echo "--- 第二刀：杀所有node server进程 ---"
+for PID in $(pgrep -f "node.*server\.js" 2>/dev/null); do kill -9 $PID 2>/dev/null && echo "  killed $PID"; done
 sleep 2
-# 强杀SIGKILL
-for PID in $(pgrep -f "node.*server\.js" 2>/dev/null); do kill -9 $PID 2>/dev/null && echo "killed node $PID"; done
-sleep 1
-# 踢占用443/3000端口的进程（防node以外的守护占着）
+# 踢占用443/3000端口的进程
 fuser -k -9 443/tcp 2>/dev/null; fuser -k -9 3000/tcp 2>/dev/null; sleep 1
-# 再次强杀（防PM2重新拉起期间漏掉的）
+# 再次强杀 + 杀健康检查
 pkill -9 -f "node.*server\.js" 2>/dev/null
 pkill -9 -f "/opt/reading-checkin" 2>/dev/null
 pkill -9 -f "/opt/health-check" 2>/dev/null
-sleep 3
+sleep 5  # 给PM2 daemon充分的时间尝试拉起新node（如果它真活着）
 
+# 如果还有残留，逐级向上杀父进程
 REMAIN=$(pgrep -f "node.*server\.js" 2>/dev/null | wc -l)
 echo "杀后残留: $REMAIN 个"
 if [ "$REMAIN" -gt 0 ]; then
-  echo "❌ 仍有进程残留，列出详情（看PPID找出元凶）："
-  ps -eo pid,ppid,stat,cmd | grep -E "node.*server\.js" | grep -v grep
-  echo ""
-  echo "尝试最后手段：逐一 kill -9 + 等待5秒 + 再次确认"
-  for PID in $(pgrep -f "node.*server\.js" 2>/dev/null); do kill -9 $PID 2>/dev/null; done
-  sleep 5
+  echo "--- 仍有残留，向上找父进程全杀 ---"
+  for PID in $(pgrep -f "node.*server\.js" 2>/dev/null); do
+    P=$PID
+    while [ "$P" != "0" ] && [ "$P" != "1" ]; do
+      PP=$(ps -o ppid= -p $P 2>/dev/null | tr -d ' ')
+      if [ -z "$PP" ] || [ "$PP" = "$P" ]; then break; fi
+      PNAME=$(ps -p $PP -o cmd= 2>/dev/null)
+      echo "  杀 $PID 的祖先 $PP ($PNAME)"
+      kill -9 $PP 2>/dev/null
+      P=$PP
+    done
+  done
+  sleep 3
+  # 最后再杀一次node
+  pkill -9 -f "node.*server\.js" 2>/dev/null
+  sleep 2
   REMAIN2=$(pgrep -f "node.*server\.js" 2>/dev/null | wc -l)
   echo "再杀后残留: $REMAIN2 个"
   if [ "$REMAIN2" -gt 0 ]; then
     echo "❌ 仍残留！请把'详细列表'截图发我，可能是D状态或cgroup隔离"
-    ps -eo pid,ppid,stat,cmd | grep -E "node.*server\.js" | grep -v grep
+    ps -eo pid,ppid,stat,cmd | grep -E "node.*server\.js|PM2" | grep -v grep
     exit 1
   fi
 fi
@@ -194,21 +208,11 @@ if (section.includes("if (GITHUB_TOKEN)")) {
 '
 
 echo ""
-echo "--- [5] 清掉GITHUB_TOKEN并重启（PM2优先，否则用start.sh）---"
+echo "--- [5] 清掉GITHUB_TOKEN并用start.sh重启（不用PM2，PM2是元凶！）---"
 unset GITHUB_TOKEN 2>/dev/null || true
-# 关键防御：把start.sh的pkill pattern加宽，避免再出现"两个node并存"
 if [ -f start.sh ]; then
   sed -i 's/pkill -9 -f "node server\.js"/pkill -9 -f "node.*server[.]js"/g' start.sh 2>/dev/null
   if grep -q 'node.*server\[.\]js' start.sh; then echo "✅ start.sh杀进程pattern已加宽（防双进程复发）"; fi
-fi
-
-if command -v pm2 >/dev/null 2>&1; then
-  echo "--- 用PM2启动（之前它就是守护者，现在重新接管，稳定可靠）---"
-  pm2 start server.js --name reading-checkin --log /var/log/reading-checkin.log 2>&1 | tail -5
-  pm2 save 2>/dev/null
-  echo "✅ PM2已启动 reading-checkin"
-elif [ -f start.sh ]; then
-  echo "--- 用start.sh启动 ---"
   bash start.sh
 else
   echo "⚠️ start.sh不存在，用内置参数直接启动"
@@ -220,7 +224,7 @@ else
   echo "已启动 PID: $!"
 fi
 sleep 4
-echo "--- 重启后进程（应只有1个 node server.js，且PPID是PM2或1）---"
+echo "--- 重启后进程（应只有1个 node server.js，PPID应该是1或bash）---"
 ps -eo pid,ppid,stat,cmd | grep -E "node.*server\.js" | grep -v grep || echo "❌ 进程没起来！看下面的日志"
 
 echo ""
