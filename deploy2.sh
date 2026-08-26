@@ -7,8 +7,10 @@ set -e
 
 APP=/opt/reading-checkin
 LOG=/var/log/reading-checkin.log
-CDN_PRIMARY="https://gcore.jsdelivr.net/gh/yaping2026/deploy-pkg@main"
-CDN_BACKUP="https://fastly.jsdelivr.net/gh/yaping2026/deploy-pkg@main"
+# 优先级：GitHub raw > jsDelivr Gcore > jsDelivr Fastly
+# GitHub raw 不会缓存，国内服务器也能访问（腾讯云IP出口允许）
+CDN_PRIMARY_RAW="https://raw.githubusercontent.com/yaping2026/deploy-pkg/main"
+CDN_FALLBACK="https://gcore.jsdelivr.net/gh/yaping2026/deploy-pkg@main"
 
 # 颜色输出
 GREEN='\033[0;32m'
@@ -21,9 +23,19 @@ step() { echo -e "${YELLOW}[$1]${NC} $2"; }
 
 cdn_download() {
   local out=$1 path=$2 minsize=$3
-  for cdn in "$CDN_PRIMARY" "$CDN_BACKUP"; do
+  # 第一优先：GitHub raw（不缓存，最可靠）
+  for base in "$CDN_PRIMARY_RAW"; do
+    echo "  尝试GitHub raw: $base/$path"
+    curl -sL --connect-timeout 30 --max-time 180 -o "$out" "$base/$path" 2>/dev/null || true
+    if [ -f "$out" ] && [ $(stat -c%s "$out" 2>/dev/null || echo 0) -gt $minsize ]; then
+      return 0
+    fi
+  done
+  # Fallback：jsDelivr CDN（可能有缓存问题）
+  echo "  ⚠️  GitHub raw失败，尝试jsDelivr"
+  for cdn in "$CDN_FALLBACK"; do
     echo "  尝试: $cdn/$path"
-    curl -sL --connect-timeout 20 --max-time 120 -o "$out" "$cdn/$path" 2>/dev/null || true
+    curl -sL --connect-timeout 30 --max-time 180 -o "$out" "$cdn/$path" 2>/dev/null || true
     if [ -f "$out" ] && [ $(stat -c%s "$out" 2>/dev/null || echo 0) -gt $minsize ]; then
       return 0
     fi
