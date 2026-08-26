@@ -21,22 +21,44 @@ cp db.js "db.js.bak-$TS" && echo "✅ db.js → db.js.bak-$TS"
 echo ""
 echo "--- [2] 停掉所有server进程（止血：覆盖就是它们干的）---"
 echo "--- 当前进程 ---"
-ps -eo pid,lstart,cmd | grep -E "node.*server\.js" | grep -v grep || echo "（无server进程）"
+ps -eo pid,ppid,stat,lstart,cmd | grep -E "node.*server\.js" | grep -v grep || echo "（无server进程）"
 # 从将死的进程里抢救GITHUB_TOKEN（数据合并要用；登录shell里通常没有这个变量）
+SAVED_TOK=""
 for PID in $(pgrep -f "node.*server\.js" 2>/dev/null); do
   if [ -r "/proc/$PID/environ" ]; then
     T=$(tr '\0' '\n' < "/proc/$PID/environ" 2>/dev/null | grep '^GITHUB_TOKEN=' | head -1 | cut -d= -f2-)
-    if [ -n "${T:-}" ]; then export GITHUB_TOKEN="$T"; echo "✅ 已从进程$PID提取GITHUB_TOKEN（仅供本次数据合并）"; fi
+    if [ -n "${T:-}" ]; then SAVED_TOK="$T"; export GITHUB_TOKEN="$T"; echo "✅ 已从进程$PID提取GITHUB_TOKEN（仅供本次数据合并）"; fi
   fi
 done
-pkill -9 -f "node.*server\.js" 2>/dev/null; sleep 2
-pkill -9 -f "node.*server\.js" 2>/dev/null; sleep 1
+# 先用信号优雅退出，给2秒
+for PID in $(pgrep -f "node.*server\.js" 2>/dev/null); do kill -15 $PID 2>/dev/null; done
+sleep 2
+# 强杀SIGKILL
+for PID in $(pgrep -f "node.*server\.js" 2>/dev/null); do kill -9 $PID 2>/dev/null && echo "killed $PID"; done
+sleep 1
+# 踢占用443/3000端口的进程（防node以外的守护占着）
+fuser -k -9 443/tcp 2>/dev/null; fuser -k -9 3000/tcp 2>/dev/null; sleep 1
+# 再次强杀（杀systemd守护残留、cgroup残留）
+pkill -9 -f "node.*server\.js" 2>/dev/null; pkill -9 -f "/opt/reading-checkin" 2>/dev/null; pkill -9 -f "health-check" 2>/dev/null
+sleep 2
 REMAIN=$(pgrep -f "node.*server\.js" 2>/dev/null | wc -l)
 echo "杀后残留: $REMAIN 个"
 if [ "$REMAIN" -gt 0 ]; then
-  echo "❌ 有进程杀不掉！请执行 ps -ef | grep node 并截图发给助手，脚本中止"
-  exit 1
+  echo "❌ 仍有进程残留，列出详情："
+  ps -eo pid,ppid,stat,cmd | grep -E "node.*server\.js" | grep -v grep
+  echo ""
+  echo "尝试最后手段：逐一 kill -9 + 等待 + 再次确认"
+  for PID in $(pgrep -f "node.*server\.js" 2>/dev/null); do kill -9 $PID 2>/dev/null; done
+  sleep 3
+  REMAIN2=$(pgrep -f "node.*server\.js" 2>/dev/null | wc -l)
+  echo "再杀后残留: $REMAIN2 个"
+  if [ "$REMAIN2" -gt 0 ]; then
+    echo "❌ 仍残留（可能是D状态不可中断睡眠或cgroup隔离），请截图发我手动处理"
+    ps -eo pid,ppid,stat,cmd | grep -E "node.*server\.js" | grep -v grep
+    exit 1
+  fi
 fi
+echo "✅ 全部server进程已清干净"
 
 echo ""
 echo "--- [3] 合并本地+GitHub数据（并集，保住全部打卡）---"
