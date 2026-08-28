@@ -59,9 +59,11 @@ if [ "$FAIL" = "1" ]; then
 fi
 
 echo "--- [3/5] 语法检查（防止坏文件上线）---"
-# 捕获详细错误（不要简单 exit，分步给出诊断信息）
+# Node 20 对未知扩展名（.new）抛 ERR_UNKNOWN_FILE_EXTENSION，所以改名 .cjs 再检查
+# 同时做 CRLF → LF 规范化（deploy-pkg 上传时偶尔会引入 CRLF）
 ERR=0
-node --check server.js.new 2> /tmp/check_server.err
+tr -d '\r' < server.js.new > /tmp/_check_server.cjs
+node --check /tmp/_check_server.cjs 2> /tmp/check_server.err
 if [ $? -eq 0 ]; then
   echo "  ✅ server.js 语法OK"
 else
@@ -69,7 +71,8 @@ else
   cat /tmp/check_server.err | head -8
   ERR=1
 fi
-node --check scheduler.js.new 2> /tmp/check_sched.err
+tr -d '\r' < scheduler.js.new > /tmp/_check_sched.cjs
+node --check /tmp/_check_sched.cjs 2> /tmp/check_sched.err
 if [ $? -eq 0 ]; then
   echo "  ✅ scheduler.js 语法OK"
 else
@@ -78,7 +81,6 @@ else
   ERR=1
 fi
 if [ "$ERR" = "1" ]; then
-  # 检查文件尾是否截断/格式
   echo ""
   echo "  🔍 诊断信息："
   echo "    node版本:   $(node -v 2>&1)"
@@ -88,9 +90,10 @@ if [ "$ERR" = "1" ]; then
   echo "    CRLF/LF 诊断: $(grep -c $'\r' server.js.new 2>/dev/null) CR字节"
   echo ""
   echo "  ⚠️ 中止。先看上面错误原因修复后再重试"
-  rm -f server.js.new scheduler.js.new public/admin.html.new
+  rm -f server.js.new scheduler.js.new public/admin.html.new /tmp/_check_server.cjs /tmp/_check_sched.cjs
   exit 1
 fi
+rm -f /tmp/_check_server.cjs /tmp/_check_sched.cjs
 
 echo "--- [4/5] 替换文件并重启 ---"
 mv server.js.new server.js
