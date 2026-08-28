@@ -16,11 +16,11 @@ download() {
     echo "  尝试: $url"
     if curl -sL --max-time 60 "$url" -o "$out" 2>/dev/null; then
       local sz=$(stat -c%s "$out" 2>/dev/null || echo 0)
-      if [ "$sz" -ge "$min" ] && ! head -c 200 "$out" | grep -qi "<!DOCTYPE\|<html"; then
+      if [ "$sz" -ge "$min" ]; then
         echo "  ✅ 下载成功 ($sz bytes)"
         return 0
       fi
-      echo "  ⚠️ 文件异常 ($sz bytes)，换通道"
+      echo "  ⚠️ 文件过小 ($sz bytes)，换通道"
     fi
   done
   return 1
