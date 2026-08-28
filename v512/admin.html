@@ -1,0 +1,1285 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>读书打卡管家 - 管理后台</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f0ede8;padding:20px}
+  .container{max-width:900px;margin:0 auto}
+  h1{text-align:center;color:#5a4a9a;margin-bottom:20px;font-size:22px}
+  .tabs{display:flex;gap:20px;margin-bottom:20px;border-bottom:2px solid #ddd}
+  .tab{cursor:pointer;padding:8px 0;color:#999;border-bottom:3px solid transparent;margin-bottom:-2px;transition:all .2s}
+  .tab.active{color:#5a4a9a;border-color:#5a4a9a;font-weight:600}
+  .panel{display:none}
+  .panel.active{display:block}
+  .card{background:#fff;border-radius:12px;padding:20px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+  .card h3{color:#5a4a9a;font-size:16px;margin-bottom:14px}
+  .form-group{margin-bottom:12px}
+  .form-group label{display:block;margin-bottom:5px;color:#555;font-size:14px;font-weight:500}
+  .form-group input,.form-group select{width:100%;padding:10px 14px;border:1px solid #ddd;border-radius:8px;font-size:14px}
+  .form-group input:focus{border-color:#5a4a9a;outline:none}
+  .btn{background:#5a4a9a;color:#fff;border:none;padding:10px 24px;border-radius:8px;cursor:pointer;font-size:14px;transition:opacity .2s}
+  .btn:hover{opacity:.85}
+  .btn-sm{padding:6px 14px;font-size:12px}
+  .btn-danger{background:#e74c3c}
+  .btn-success{background:#27ae60}
+  .btn-secondary{background:#95a5a6}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th,td{padding:10px 8px;text-align:left;border-bottom:1px solid #eee}
+  th{color:#888;font-weight:500;font-size:13px}
+  .empty{text-align:center;color:#aaa;padding:30px;font-size:14px}
+  .success{background:#d4edda;color:#155724;padding:10px 14px;border-radius:8px;margin-bottom:12px;font-size:14px}
+  .error{background:#f8d7da;color:#721c24;padding:10px 14px;border-radius:8px;margin-bottom:12px;font-size:14px}
+  .upload-zone{border:2px dashed #ccc;border-radius:12px;padding:30px;text-align:center;color:#888;cursor:pointer;transition:border-color .2s}
+  .upload-zone:hover{border-color:#5a4a9a}
+  .upload-zone.dragover{border-color:#5a4a9a;background:#f8f6ff}
+  .file-list{text-align:left;margin-top:12px}
+  .file-item{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:#f8f9fa;border-radius:6px;margin-bottom:6px;font-size:13px}
+  .content-row{width:100%}
+  .content-row{display:flex;align-items:center;padding:10px 14px;border-bottom:1px solid #eee;font-size:14px}
+  .content-row:hover{background:#f8f6ff}
+  .content-row.selected{background:#eef2ff}
+  .content-row .chk{width:36px;display:flex;align-items:center;justify-content:center}
+  .content-row .chk input[type="checkbox"]{width:16px;height:16px;cursor:pointer;accent-color:#5a4a9a}
+  .content-row .date{width:120px;font-weight:600;color:#5a4a9a}
+  .content-row .file-info{flex:1;display:flex;gap:12px;align-items:center}
+  .content-row .file-tag{padding:3px 10px;border-radius:12px;font-size:12px}
+  .content-row .file-tag.pdf{background:#e8f4fd;color:#1976d2}
+  .content-row .file-tag.jpg{background:#e8f5e9;color:#388e3c}
+  .content-row .file-tag.missing{background:#f5f5f5;color:#bbb}
+  .content-row .del-btn{background:none;border:none;color:#e74c3c;cursor:pointer;font-size:13px;padding:4px 8px;border-radius:4px}
+  .content-row .del-btn:hover{background:#fce4ec}
+  .content-header{display:flex;padding:8px 14px;background:#f8f9fa;font-size:13px;color:#888;font-weight:500;border-bottom:2px solid #ddd;align-items:center}
+  .content-header .chk{width:36px;display:flex;align-items:center;justify-content:center}
+  .content-header .chk input[type="checkbox"]{width:16px;height:16px;cursor:pointer;accent-color:#5a4a9a}
+  .batch-bar{display:none;align-items:center;gap:12px;padding:8px 14px;background:#fff;border:1px solid #e0e0e0;border-radius:8px;margin-bottom:10px;font-size:14px}
+  .batch-bar.show{display:flex}
+  .batch-bar span{color:#555}
+  .batch-bar .batch-btn{background:#e74c3c;color:#fff;border:none;padding:6px 16px;border-radius:6px;cursor:pointer;font-size:13px}
+  .batch-bar .batch-btn:disabled{background:#ccc;cursor:not-allowed}
+  .batch-bar .batch-btn:hover:not(:disabled){opacity:.85}
+  .group-members{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+  .member-tag{background:#f0f0f0;padding:4px 8px;border-radius:6px;font-size:12px;color:#333;display:inline-flex;align-items:center;gap:4px}
+  .mem-name{cursor:pointer;color:#333;font-weight:500}
+  .mem-name:hover{text-decoration:underline;color:#1890ff}
+  .mem-mobile{color:#999;font-size:11px}
+  .mem-del{background:none;border:none;color:#ff4d4f;cursor:pointer;font-size:11px;padding:0 2px}
+  .tabs-content{margin-bottom:20px}
+  .help-text{color:#888;font-size:13px;margin-top:6px}
+  .report-table-wrap{overflow-x:auto;margin-top:12px}
+  .report-table{border-collapse:collapse;font-size:12px;white-space:nowrap}
+  .report-table th,.report-table td{padding:6px 8px;border:1px solid #ddd;text-align:center}
+  .report-table th{background:#f8f6ff;color:#5a4a9a;font-weight:600;position:sticky;top:0;z-index:1}
+  .report-table .name-cell{text-align:left;position:sticky;left:0;background:#fff;z-index:2;font-weight:500;min-width:80px}
+  .report-table .name-header{position:sticky;left:0;z-index:3}
+  .report-table .cell-ok{color:#27ae60;font-weight:600}
+  .report-table .cell-fail{color:#e74c3c;font-weight:600}
+  .report-table .cell-makeup{color:#e67e22;font-size:11px}
+  .report-table .cell-empty{color:#ccc}
+  .report-table .alert-cell{background:#fff3cd}
+  .report-table .alert-cell-red{background:#fde8e8}
+  .report-table .stat-col{background:#f0f7ff;font-weight:600}
+  .report-summary{display:flex;gap:16px;margin-bottom:12px;flex-wrap:wrap}
+  .report-summary .stat{background:#fff;padding:10px 18px;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,.08);font-size:14px}
+  .report-summary .stat b{color:#5a4a9a;font-size:18px}
+  .report-alert{background:#fff3cd;border-left:4px solid #ffc107;padding:10px 14px;border-radius:0 8px 8px 0;margin-bottom:12px;font-size:13px;color:#856404}
+  .report-alert-fail{background:#fde8e8;border-left:4px solid #e74c3c;padding:10px 14px;border-radius:0 8px 8px 0;margin-bottom:12px;font-size:13px;color:#a33;font-weight:500}
+  .cell-editable{cursor:pointer;position:relative}
+  .cell-editable:hover{outline:2px solid #5a4a9a;outline-offset:-2px;border-radius:3px}
+  .cell-pending{outline:3px solid #ff9800;outline-offset:-3px;border-radius:3px;background:#fff8e1 !important}
+  .save-bar{display:none;position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:2px solid #5a4a9a;padding:14px 20px;z-index:999;box-shadow:0 -4px 20px rgba(0,0,0,.15);align-items:center;justify-content:center;gap:16px}
+  .save-bar.show{display:flex}
+  .save-bar .pending-count{color:#e67e22;font-weight:600;font-size:15px}
+  .save-bar .btn-save{background:#27ae60;color:#fff;border:none;padding:12px 32px;border-radius:8px;font-size:15px;cursor:pointer;font-weight:600}
+  .save-bar .btn-save:hover{background:#219a52}
+  .save-bar .btn-save:disabled{background:#ccc;cursor:not-allowed}
+  .save-bar .btn-cancel{background:#95a5a6;color:#fff;border:none;padding:10px 24px;border-radius:8px;font-size:14px;cursor:pointer}
+  .save-bar .btn-cancel:hover{background:#7f8c8d}
+  .edit-menu{position:fixed;background:#fff;border:1px solid #ddd;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,.2);padding:6px 0;z-index:1000;min-width:140px}
+  .edit-menu-item{padding:8px 16px;cursor:pointer;font-size:13px;white-space:nowrap}
+  .edit-menu-item:hover{background:#f0f0f0}
+  .edit-menu-item.danger{color:#e74c3c}
+  .edit-menu-item.danger:hover{background:#fde8e8}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>读书打卡管家 - 管理后台</h1>
+  <a href="/" style="float:right;color:#5a4a9a;text-decoration:none;font-size:14px;margin-right:12px">返回打卡页</a>
+  <button onclick="doLogout()" style="float:right;background:none;border:1px solid #5a4a9a;color:#5a4a9a;padding:4px 12px;border-radius:6px;cursor:pointer;font-size:13px;margin-right:12px">退出</button>
+  <div class="clear" style="clear:both"></div>
+
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab(0)">群组管理</div>
+    <div class="tab" onclick="switchTab(1)">每日内容</div>
+    <div class="tab" onclick="switchTab(2)">月度报表</div>
+    <div class="tab" onclick="switchTab(3)">季度换组</div>
+    <div class="tab" onclick="switchTab(4)">测试</div>
+  </div>
+
+  <div class="tabs-content">
+    <!-- 群组管理 -->
+    <div class="panel active" id="panel-groups">
+      <div class="card">
+        <h3>添加群组</h3>
+        <div class="form-group">
+          <label>群名称</label>
+          <input type="text" id="groupName" placeholder="如：灵魂之友读书群">
+        </div>
+        <div class="form-group">
+          <label>Webhook地址</label>
+          <input type="text" id="webhookUrl" placeholder="https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=xxx">
+        </div>
+        <button class="btn" onclick="addGroup()">添加群组</button>
+      </div>
+
+      <div class="card">
+        <h3>已有群组</h3>
+        <div id="groupsList"><div class="empty">暂无群组，请先添加</div></div>
+      </div>
+    </div>
+
+    <!-- 每日内容 -->
+    <div class="panel" id="panel-content">
+      <div class="card">
+        <h3>批量上传每日读书内容</h3>
+        <div class="help-text">
+          命名规则：日期+A为PDF，日期+B为图片<br>
+          示例：20260610A.pdf、20260610B.jpg<br>
+          上传同名文件会自动覆盖旧文件，无需先删除
+        </div>
+        <br>
+        <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
+          <div style="font-size:36px;margin-bottom:8px">+</div>
+          <div>点击或拖拽上传文件</div>
+          <div style="font-size:12px;color:#aaa;margin-top:4px">支持同时上传多个文件</div>
+          <input type="file" id="fileInput" multiple style="display:none" accept=".pdf,.jpg,.jpeg,.png" onchange="handleFiles(this.files)">
+        </div>
+        <div class="file-list" id="uploadFileList"></div>
+        <br>
+        <button class="btn" id="uploadBtn" style="display:none" onclick="uploadFiles()">确认上传</button>
+        <div id="uploadResult"></div>
+      </div>
+
+      <div class="card">
+        <h3>已上传内容</h3>
+        <div class="batch-bar" id="batchBar">
+          <span id="batchCount">已选 0 项</span>
+          <button class="batch-btn" id="batchDelBtn" onclick="batchDeleteContent()" disabled>批量删除</button>
+        </div>
+        <div id="contentList"><div class="empty">暂无内容</div></div>
+      </div>
+    </div>
+
+    <!-- 月度报表 -->
+    <div class="panel" id="panel-report">
+      <div class="card">
+        <h3>月度打卡报表</h3>
+        <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+          <div class="form-group" style="margin:0">
+            <label>开始日期</label>
+            <input type="date" id="reportStartDate" style="padding:8px 12px;border:1px solid #ddd;border-radius:8px;font-size:14px">
+          </div>
+          <div class="form-group" style="margin:0">
+            <label>结束日期</label>
+            <input type="date" id="reportEndDate" style="padding:8px 12px;border:1px solid #ddd;border-radius:8px;font-size:14px">
+          </div>
+          <div class="form-group" style="margin:0">
+            <label>选择群组</label>
+            <select id="reportGroupId" style="padding:8px 12px;border:1px solid #ddd;border-radius:8px;font-size:14px"></select>
+          </div>
+          <div class="form-group" style="margin:0;position:relative">
+            <label>搜索姓名</label>
+            <input type="text" id="searchName" placeholder="输入姓名筛选..." style="padding:8px 12px;border:1px solid #ddd;border-radius:8px;font-size:14px;width:160px" oninput="filterReport()">
+          </div>
+        </div>
+        <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:10px">
+          <button class="btn" onclick="loadReport()">生成报表</button>
+          <button class="btn btn-success" onclick="exportExcel()">导出Excel</button>
+          <button class="btn" style="background:#e74c3c;color:#fff;border:none" onclick="sendAlert()">📢 发送预警通知</button>
+        </div>
+      </div>
+      <div id="reportResult"></div>
+    </div>
+
+    <!-- 季度换组 -->
+    <div class="panel" id="panel-regroup">
+      <div class="card">
+        <h3>季度抽签换组</h3>
+        <div class="help-text" style="background:#f8f6ff;padding:12px 14px;border-radius:8px;line-height:1.8">
+          每季度（3个月）抽签换组一次。执行后：<br>
+          · 只挪人不删组不删人，成员的打卡PIN、历史记录全部保留<br>
+          · <b>历史报表仍按"当时的组"统计，之前的数据不会乱</b>（换组前名单自动备份）<br>
+          · 换组后日报、群播报、@提醒自动按新组走<br>
+          · <b>需要通知成员改用新组的打卡链接</b>（群名不变，入口链接里group参数会变，建议发到新群）<br>
+          · 建议：生效日期设为季度首月1号，在1号早上6点早报发出后操作
+        </div>
+        <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:14px">
+          <div class="form-group" style="margin:0">
+            <label>生效日期</label>
+            <input type="date" id="regroupDate" style="padding:8px 12px;border:1px solid #ddd;border-radius:8px;font-size:14px">
+          </div>
+          <button class="btn" style="background:#e67e22" onclick="randomDraw()">🎲 一键随机抽签</button>
+          <button class="btn btn-secondary" onclick="resetDraw()">恢复当前分组</button>
+          <button class="btn btn-success" onclick="confirmRegroup()">✅ 确认执行换组</button>
+        </div>
+        <div id="regroupSummary" style="margin-top:14px;font-size:14px;color:#555"></div>
+      </div>
+
+      <div class="card">
+        <h3>成员分派明细</h3>
+        <div class="help-text" style="margin-bottom:10px">抽签后可逐个微调（下拉选择目标组），改完点上方"确认执行换组"。灰色行=保持原组不动。</div>
+        <div style="overflow-x:auto">
+          <table style="width:100%;border-collapse:collapse;font-size:14px">
+            <thead>
+              <tr>
+                <th style="padding:8px;text-align:left;border-bottom:2px solid #ddd">姓名</th>
+                <th style="padding:8px;text-align:left;border-bottom:2px solid #ddd">当前组</th>
+                <th style="padding:8px;text-align:left;border-bottom:2px solid #ddd">新组（抽签结果）</th>
+              </tr>
+            </thead>
+            <tbody id="regroupTableBody">
+              <tr><td colspan="3" class="empty">加载中...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div id="regroupResult"></div>
+    </div>
+
+    <!-- 测试 -->
+    <div class="panel" id="panel-test">
+      <div class="card">
+        <h3>手动触发测试</h3>
+        <div class="form-group">
+          <label>选择群组</label>
+          <select id="testGroupId"><option value="">请先添加群组</option></select>
+        </div>
+        <button class="btn btn-sm btn-secondary" onclick="testWebhook()">测试Webhook连接</button>
+        <button class="btn btn-sm btn-success" style="margin-left:8px" onclick="testMorning()">手动发早报(全群组)</button>
+        <button class="btn btn-sm" style="margin-left:8px" onclick="testReminder()">手动发提醒(全群组)</button>
+        <button class="btn btn-sm" style="margin-left:8px" onclick="testReport()">紧急补发日报</button>
+        <div id="testResult"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 底部保存栏 -->
+<div class="save-bar" id="saveBar">
+  <span class="pending-count" id="pendingCount">0 项待保存</span>
+  <button class="btn-save" id="saveBtn" onclick="savePendingChanges()">💾 保存全部修改</button>
+  <button class="btn-cancel" onclick="clearPendingChanges()">取消</button>
+</div>
+
+<script>
+// 全局拦截：让所有 fetch 自动带 cookie + 自动检测401跳转登录
+(function() {
+  const _origFetch = window.fetch;
+  window.fetch = function(url, opts) {
+    opts = opts || {};
+    opts.credentials = 'include';
+    return _origFetch.call(this, url, opts).then(async function(res) {
+      // 检测401未登录：自动跳转登录页，避免卡死
+      if (res.status === 401 && !url.includes('/api/admin/')) {
+        // 避免登录接口本身触发循环
+        console.warn('[Session] 登录已过期，即将跳转到登录页...');
+        setTimeout(() => {
+          alert('⚠️ 登录已过期，请重新登录\n\n（原因：服务器重启或多实例切换导致Session丢失）');
+          window.location.href = '/admin/login?reason=expired&from=' + encodeURIComponent(window.location.pathname);
+        }, 300);
+      }
+      return res;
+    });
+  };
+})();
+let selectedFiles = [];
+let groups = [];
+let selectedDates = new Set(); // 已选中的日期（批量删除用）
+
+function switchTab(idx) {
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', i===idx));
+  document.querySelectorAll('.panel').forEach((p,i) => p.classList.toggle('active', i===idx));
+}
+
+async function loadGroups() {
+  const r = await fetch('/api/groups');
+  const d = await r.json();
+  groups = d.groups || [];
+  // 按组名中文数字排序（一组→五组）
+  const _cnNums = { '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6, '七': 7, '八': 8, '九': 9, '十': 10 };
+  groups.sort((a, b) => {
+    const na = (a.name || '').match(/([一二三四五六七八九十])\s*组/);
+    const nb = (b.name || '').match(/([一二三四五六七八九十])\s*组/);
+    return (na ? _cnNums[na[1]] : 0) - (nb ? _cnNums[nb[1]] : 0);
+  });
+  renderGroups();
+  renderTestGroupSelect();
+  renderReportGroupSelect();
+}
+
+function renderGroups() {
+  const el = document.getElementById('groupsList');
+  if (groups.length === 0) { el.innerHTML = '<div class="empty">暂无群组，请先添加</div>'; return; }
+  const todayStr = new Date().toISOString().split('T')[0];
+  let html = '';
+  for (const g of groups) {
+    html += `<div style="border-bottom:1px solid #eee;padding:12px 0">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div><b>${g.name}</b> <span style="color:#888;font-size:13px">(${g.memberCount}人)</span></div>
+        <div>
+          <button class="btn btn-sm btn-danger" onclick="deleteGroup(${g.id})">删除</button>
+        </div>
+      </div>
+      <div style="color:#888;font-size:12px;margin-top:4px">${g.webhookUrl}</div>
+      <div id="members-${g.id}" style="margin-top:8px">
+        <div style="display:flex;gap:6px;align-items:center">
+          <input type="text" id="memberNames-${g.id}" placeholder="姓名（逗号分隔多人）" style="flex:2;min-width:140px;padding:6px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px">
+          <input type="text" id="memberMobiles-${g.id}" placeholder="手机号（逗号分隔，可选）" style="flex:2;min-width:160px;padding:6px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px">
+          <input type="date" id="memberStartDate-${g.id}" value="${todayStr}" title="开始打卡日期，默认当天" style="flex:1;min-width:130px;padding:6px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px">
+          <button class="btn btn-sm" onclick="addMembers(${g.id})">添加成员</button>
+        </div>
+        <div class="group-members" id="memberList-${g.id}"></div>
+      </div>
+    </div>`;
+    loadMembers(g.id);
+  }
+  el.innerHTML = html;
+}
+
+async function loadMembers(groupId) {
+  const r = await fetch('/api/groups/' + groupId + '/members');
+  const d = await r.json();
+  const list = document.getElementById('memberList-' + groupId);
+  if (d.members && d.members.length > 0) {
+    list.innerHTML = d.members.map(m => `
+      <div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid #f5f5f5">
+        <span style="min-width:60px;font-size:13px;font-weight:500">${m.name}</span>
+        <input type="tel" placeholder="手机号（用于@提醒）" value="${m.mobile || ''}"
+          style="flex:1;padding:3px 8px;border:1px solid #ddd;border-radius:4px;font-size:12px;color:#555"
+          onchange="updateMemberMobile(${m.id}, this.value, this)"
+        />
+        <input type="date" title="开始打卡日期" value="${m.startDate || ''}"
+          style="width:130px;padding:3px 8px;border:1px solid #ddd;border-radius:4px;font-size:12px;color:#555"
+          onchange="updateMemberStartDate(${m.id}, this.value, this)"
+        />
+        <button onclick="deleteMember(${m.id}, ${groupId})" style="padding:2px 8px;border:1px solid #f44;border-radius:4px;background:#fff;color:#f44;font-size:12px;cursor:pointer">删除</button>
+      </div>`).join('');
+  } else {
+    list.innerHTML = '<span style="color:#aaa;font-size:12px">暂无成员</span>';
+  }
+}
+
+async function updateMemberMobile(memberId, mobile, inputEl) {
+  try {
+    const r = await fetch('/api/members/' + memberId + '/mobile', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mobile })
+    });
+    const d = await r.json();
+    if (d.ok) {
+      inputEl.style.borderColor = '#4CAF50';
+      setTimeout(() => { inputEl.style.borderColor = '#ddd'; }, 1500);
+    } else {
+      alert(d.msg || '保存失败');
+    }
+  } catch (e) {
+    alert('网络错误');
+  }
+}
+
+async function updateMemberStartDate(memberId, startDate, inputEl) {
+  try {
+    const r = await fetch('/api/members/' + memberId, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ startDate })
+    });
+    const d = await r.json();
+    if (d.ok) {
+      inputEl.style.borderColor = '#4CAF50';
+      setTimeout(() => { inputEl.style.borderColor = '#ddd'; }, 1500);
+    } else {
+      alert(d.msg || '保存失败');
+    }
+  } catch (e) {
+    alert('网络错误');
+  }
+}
+
+async function deleteMember(memberId, groupId) {
+  if (!confirm('确定删除该成员？')) return;
+  await fetch('/api/members/' + memberId, { method: 'DELETE' });
+  loadMembers(groupId);
+  loadGroups();
+}
+
+async function addGroup() {
+  const name = document.getElementById('groupName').value.trim();
+  const webhookUrl = document.getElementById('webhookUrl').value.trim();
+  if (!name || !webhookUrl) { alert('请填写完整'); return; }
+  const r = await fetch('/api/groups', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name, webhookUrl}) });
+  const d = await r.json();
+  if (d.ok) {
+    document.getElementById('groupName').value = '';
+    document.getElementById('webhookUrl').value = '';
+    loadGroups();
+  } else {
+    alert(d.msg || '添加失败');
+  }
+}
+
+async function deleteGroup(id) {
+  if (!confirm('确定删除该群组？')) return;
+  await fetch('/api/groups/' + id, { method:'DELETE' });
+  loadGroups();
+}
+
+async function addMembers(groupId) {
+  const names = document.getElementById('memberNames-' + groupId).value;
+  const arr = names.split(/[,，]/).map(s => s.trim()).filter(s => s);
+  if (arr.length === 0) { alert('请输入成员姓名'); return; }
+  // 收集手机号
+  const mobileStr = document.getElementById('memberMobiles-' + groupId).value;
+  const mobiles = mobileStr.split(/[,，]/).map(s => s.trim()).filter(s => s);
+  // 收集开始日期（所有成员使用同一个开始日期）
+  const startDateEl = document.getElementById('memberStartDate-' + groupId);
+  const startDate = startDateEl ? startDateEl.value : '';
+  const startDates = arr.map(() => startDate || new Date().toISOString().split('T')[0]);
+  const r = await fetch('/api/groups/' + groupId + '/members', {
+    method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({names: arr, mobiles: mobiles, startDates: startDates})
+  });
+  const d = await r.json();
+  if (d.ok) {
+    document.getElementById('memberNames-' + groupId).value = '';
+    document.getElementById('memberMobiles-' + groupId).value = '';
+    loadMembers(groupId);
+    loadGroups();
+  } else {
+    alert(d.msg || '添加失败');
+  }
+}
+
+// ====== 每日内容 ======
+const uploadZone = document.getElementById('uploadZone');
+uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('dragover'); });
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
+uploadZone.addEventListener('drop', e => {
+  e.preventDefault();
+  uploadZone.classList.remove('dragover');
+  handleFiles(e.dataTransfer.files);
+});
+
+function handleFiles(files) {
+  selectedFiles = Array.from(files);
+  const list = document.getElementById('uploadFileList');
+  if (selectedFiles.length === 0) { list.innerHTML = ''; document.getElementById('uploadBtn').style.display = 'none'; return; }
+  list.innerHTML = selectedFiles.map(f => `<div class="file-item"><span>${f.name}</span><span style="color:#888">${(f.size/1024/1024).toFixed(2)}MB</span></div>`).join('');
+  document.getElementById('uploadBtn').style.display = 'inline-block';
+}
+
+async function uploadFiles() {
+  if (selectedFiles.length === 0) return;
+  const fd = new FormData();
+  for (const f of selectedFiles) fd.append('files', f);
+
+  const btn = document.getElementById('uploadBtn');
+  btn.textContent = '上传中...';
+  btn.disabled = true;
+
+  const r = await fetch('/api/content/upload', { method:'POST', body: fd });
+  const d = await r.json();
+
+  btn.textContent = '确认上传';
+  btn.disabled = false;
+
+  const result = document.getElementById('uploadResult');
+  if (d.ok) {
+    let msg = '';
+    if (d.uploaded && d.uploaded.length > 0) msg += '<div class="success">成功上传 ' + d.uploaded.length + ' 个文件</div>';
+    if (d.errors && d.errors.length > 0) msg += '<div class="error">' + d.errors.join('<br>') + '</div>';
+    result.innerHTML = msg;
+    selectedFiles = [];
+    document.getElementById('uploadFileList').innerHTML = '';
+    document.getElementById('uploadBtn').style.display = 'none';
+    loadContent();
+  } else {
+    result.innerHTML = '<div class="error">上传失败</div>';
+  }
+}
+
+async function loadContent() {
+  const r = await fetch('/api/content');
+  const d = await r.json();
+  const list = document.getElementById('contentList');
+  if (!d.contents || d.contents.length === 0) { list.innerHTML = '<div class="empty">暂无内容</div>'; selectedDates.clear(); updateBatchBar(); return; }
+
+  let html = '<div class="content-header">';
+  html += '<div class="chk"><input type="checkbox" id="selectAllChk" onchange="toggleSelectAll()"></div>';
+  html += '<div class="date" style="width:120px">日期</div>';
+  html += '<div style="flex:1">文件</div>';
+  html += '<div style="width:60px">操作</div>';
+  html += '</div>';
+
+  for (const c of d.contents) {
+    const dateDisplay = c.date.substring(0,4) + '-' + c.date.substring(4,6) + '-' + c.date.substring(6,8);
+    const isSelected = selectedDates.has(c.date);
+    html += `<div class="content-row${isSelected ? ' selected' : ''}" data-date="${c.date}">`;
+    html += `<div class="chk"><input type="checkbox" ${isSelected ? 'checked' : ''} onchange="toggleSelectDate('${c.date}')"></div>`;
+    html += `<div class="date">${dateDisplay}</div>`;
+    html += `<div class="file-info">`;
+    html += `${c.pdfUrl ? '<span class="file-tag pdf">PDF</span>' : '<span class="file-tag missing">无PDF</span>'}`;
+    html += `${c.jpgUrl ? '<span class="file-tag jpg">图片</span>' : '<span class="file-tag missing">无图片</span>'}`;
+    html += `</div>`;
+    html += `<div><button class="del-btn" onclick="deleteContent('${c.date}')" title="删除该日全部内容">删除</button></div>`;
+    html += `</div>`;
+  }
+  list.innerHTML = html;
+  updateBatchBar();
+}
+
+async function deleteContent(date) {
+  const dateDisplay = date.substring(0,4) + '-' + date.substring(4,6) + '-' + date.substring(6,8);
+  if (!confirm('确定删除 ' + dateDisplay + ' 的全部内容（PDF+图片）？')) return;
+  const r = await fetch('/api/content/' + date, { method:'DELETE' });
+  const d = await r.json();
+  if (d.ok) {
+    selectedDates.delete(date);
+    loadContent();
+  } else {
+    alert('删除失败');
+  }
+}
+
+// ====== 批量选择/删除 ======
+function toggleSelectAll() {
+  const chk = document.getElementById('selectAllChk');
+  const rows = document.querySelectorAll('.content-row');
+  if (chk && chk.checked) {
+    rows.forEach(row => {
+      const date = row.dataset.date;
+      if (date) selectedDates.add(date);
+    });
+  } else {
+    selectedDates.clear();
+  }
+  loadContent();
+}
+
+function toggleSelectDate(date) {
+  if (selectedDates.has(date)) {
+    selectedDates.delete(date);
+  } else {
+    selectedDates.add(date);
+  }
+  loadContent();
+}
+
+function updateBatchBar() {
+  const bar = document.getElementById('batchBar');
+  const countEl = document.getElementById('batchCount');
+  const btn = document.getElementById('batchDelBtn');
+  const allChk = document.getElementById('selectAllChk');
+  const totalRows = document.querySelectorAll('.content-row').length;
+
+  if (selectedDates.size > 0) {
+    bar.classList.add('show');
+    countEl.textContent = '已选 ' + selectedDates.size + ' 项';
+    btn.disabled = false;
+  } else {
+    bar.classList.remove('show');
+    countEl.textContent = '已选 0 项';
+    btn.disabled = true;
+  }
+
+  // 更新全选checkbox状态
+  if (allChk) {
+    if (totalRows > 0 && selectedDates.size === totalRows) {
+      allChk.checked = true;
+      allChk.indeterminate = false;
+    } else if (selectedDates.size > 0) {
+      allChk.checked = false;
+      allChk.indeterminate = true;
+    } else {
+      allChk.checked = false;
+      allChk.indeterminate = false;
+    }
+  }
+}
+
+async function batchDeleteContent() {
+  if (selectedDates.size === 0) return;
+  const dates = Array.from(selectedDates);
+  const dateStr = dates.map(d => d.substring(0,4) + '-' + d.substring(4,6) + '-' + d.substring(6,8)).join('、');
+  if (!confirm('确定批量删除以下 ' + dates.length + ' 天的全部内容？\n\n' + dateStr + '\n\n此操作不可恢复！')) return;
+
+  const btn = document.getElementById('batchDelBtn');
+  const origText = btn.textContent;
+  btn.textContent = '删除中...';
+  btn.disabled = true;
+
+  try {
+    const r = await fetch('/api/content/batch-delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dates })
+    });
+    const d = await r.json();
+
+    if (d.ok) {
+      const suc = d.results.success.length;
+      const fail = d.results.failed.length;
+      selectedDates.clear();
+      loadContent();
+      if (fail === 0) {
+        alert('批量删除成功！共删除 ' + suc + ' 天内容');
+      } else {
+        const failDates = d.results.failed.map(f => f.date + '(' + f.msg + ')').join('\n');
+        alert('删除完成：成功 ' + suc + ' 天，失败 ' + fail + ' 天\n\n失败详情：\n' + failDates);
+      }
+    } else {
+      alert('批量删除失败：' + (d.msg || '未知错误'));
+    }
+  } catch (e) {
+    alert('请求失败：' + e.message);
+  } finally {
+    btn.textContent = origText;
+    btn.disabled = false;
+  }
+}
+
+// ====== 测试 ======
+function renderTestGroupSelect() {
+  const sel = document.getElementById('testGroupId');
+  if (groups.length === 0) { sel.innerHTML = '<option value="">请先添加群组</option>'; return; }
+  sel.innerHTML = groups.map(g => `<option value="${g.id}">${g.name}</option>`).join('');
+}
+
+async function testWebhook() {
+  const groupId = document.getElementById('testGroupId').value;
+  if (!groupId) { alert('请先选择群组'); return; }
+  const g = groups.find(x => x.id == groupId);
+  if (!g) return;
+  const r = await fetch('/api/test/webhook', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({webhookUrl: g.webhookUrl}) });
+  const d = await r.json();
+  document.getElementById('testResult').innerHTML = d.ok ? '<div class="success">' + d.msg + '</div>' : '<div class="error">' + d.msg + '</div>';
+}
+
+async function testMorning() {
+  if (!confirm('确认向全部群组发送早报（日报+打卡入口）？\n（如今日已自动发送过，系统会提示已发送）')) return;
+  const r = await fetch('/api/test/morning', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ confirm: true }) });
+  const d = await r.json();
+  document.getElementById('testResult').innerHTML = d.ok ? '<div class="success">' + d.msg + '</div>' : '<div class="error">' + d.msg + '</div>';
+}
+
+async function testReminder() {
+  if (!confirm('确认向全部群组发送打卡提醒？\n（如今晚已自动发送过，系统会提示已发送）')) return;
+  const r = await fetch('/api/test/reminder', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({}) });
+  const d = await r.json();
+  document.getElementById('testResult').innerHTML = d.ok ? '<div class="success">' + d.msg + '</div>' : '<div class="error">' + d.msg + '</div>';
+}
+
+async function testReport() {
+  const groupId = document.getElementById('testGroupId').value;
+  const r = await fetch('/api/test/report', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({groupId, confirm: true}) });
+  const d = await r.json();
+  document.getElementById('testResult').innerHTML = d.ok ? '<div class="success">' + d.msg + '</div>' : '<div class="error">' + d.msg + '</div>';
+}
+
+// ====== 季度换组 ======
+let regroupMembers = []; // {id, name, groupId, targetGroupId}
+
+async function loadRegroup() {
+  const all = [];
+  for (const g of groups) {
+    try {
+      const r = await fetch('/api/groups/' + g.id + '/members');
+      const d = await r.json();
+      (d.members || []).forEach(m => all.push({ id: m.id, name: m.name, groupId: m.groupId, targetGroupId: m.groupId }));
+    } catch (e) { /* 忽略单组加载失败 */ }
+  }
+  // 按当前组+姓名排序，便于核对
+  all.sort((a, b) => a.groupId - b.groupId || a.name.localeCompare(b.name, 'zh'));
+  regroupMembers = all;
+  renderRegroup();
+}
+
+function renderRegroup() {
+  const tbody = document.getElementById('regroupTableBody');
+  if (regroupMembers.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="3" class="empty">暂无成员</td></tr>';
+    document.getElementById('regroupSummary').innerHTML = '';
+    return;
+  }
+  const gName = id => { const g = groups.find(x => x.id === id); return g ? g.name : '未知组'; };
+  let html = '';
+  for (const m of regroupMembers) {
+    const moved = m.targetGroupId !== m.groupId;
+    html += `<tr style="${moved ? 'background:#f0fff4' : 'color:#999'}">
+      <td style="padding:6px 8px">${m.name}</td>
+      <td style="padding:6px 8px">${gName(m.groupId)}</td>
+      <td style="padding:6px 8px">
+        <select onchange="setTarget(${m.id}, this.value)" style="padding:4px 10px;border:1px solid ${moved ? '#27ae60' : '#ddd'};border-radius:6px;font-size:13px;${moved ? 'color:#27ae60;font-weight:600' : ''}">
+          ${groups.map(g => `<option value="${g.id}" ${g.id === m.targetGroupId ? 'selected' : ''}>${g.name}</option>`).join('')}
+        </select>
+        ${moved ? '<span style="color:#27ae60;font-size:12px">→ 换组</span>' : ''}
+      </td>
+    </tr>`;
+  }
+  tbody.innerHTML = html;
+
+  // 汇总统计
+  const movedCount = regroupMembers.filter(m => m.targetGroupId !== m.groupId).length;
+  const counts = {};
+  for (const m of regroupMembers) counts[m.targetGroupId] = (counts[m.targetGroupId] || 0) + 1;
+  const countStr = groups.map(g => g.name.replace('ZPT-', '') + ' ' + (counts[g.id] || 0) + '人').join('　');
+  document.getElementById('regroupSummary').innerHTML =
+    (movedCount > 0
+      ? `本次共 <b style="color:#e67e22">${movedCount}</b> 人换组，抽签结果：　${countStr}`
+      : '当前未做任何调整（可点"一键随机抽签"或逐个下拉选择新组）')
+    + '<br><span style="color:#999;font-size:12px">提示：可以多次点"一键随机抽签"重新抽，满意后再执行</span>';
+}
+
+function setTarget(memberId, val) {
+  const m = regroupMembers.find(x => x.id === memberId);
+  if (m) m.targetGroupId = parseInt(val);
+  renderRegroup();
+}
+
+// 一键随机抽签：全员洗牌后均匀分到各组（每组人数差最多1人）
+function randomDraw() {
+  if (groups.length === 0) { alert('请先添加群组'); return; }
+  const list = [...regroupMembers];
+  for (let i = list.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [list[i], list[j]] = [list[j], list[i]];
+  }
+  const gids = groups.map(g => g.id);
+  list.forEach((m, i) => { m.targetGroupId = gids[i % gids.length]; });
+  renderRegroup();
+}
+
+function resetDraw() {
+  regroupMembers.forEach(m => { m.targetGroupId = m.groupId; });
+  renderRegroup();
+}
+
+async function confirmRegroup() {
+  const eff = document.getElementById('regroupDate').value;
+  if (!eff) { alert('请选择生效日期（建议季度首月1号）'); return; }
+  const moves = regroupMembers
+    .filter(m => m.targetGroupId !== m.groupId)
+    .map(m => ({ memberId: m.id, newGroupId: m.targetGroupId }));
+  if (moves.length === 0) { alert('没有成员需要换组，请先抽签或调整分派'); return; }
+  if (!confirm('确认执行换组？\n\n· 共 ' + moves.length + ' 人换组\n· 生效日期：' + eff + '\n· 换组前名单已自动备份\n· 历史报表仍按当时的组统计，不会乱\n\n执行后请通知成员使用新组打卡链接！')) return;
+
+  const btn = event && event.target;
+  if (btn) { btn.disabled = true; btn.textContent = '执行中...'; }
+  try {
+    const r = await fetch('/api/regroup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ moves, effectiveDate: eff })
+    });
+    const d = await r.json();
+    if (d.ok) {
+      document.getElementById('regroupResult').innerHTML = '<div class="success">换组完成！共换 ' + d.changed + ' 人（生效日期 ' + d.effectiveDate + '）<br>别忘了通知成员使用新组的打卡链接。</div>';
+      await loadRegroup();
+      loadGroups();
+    } else {
+      document.getElementById('regroupResult').innerHTML = '<div class="error">换组失败：' + (d.msg || '未知错误') + '</div>';
+    }
+  } catch (e) {
+    document.getElementById('regroupResult').innerHTML = '<div class="error">网络错误：' + e.message + '</div>';
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '✅ 确认执行换组'; }
+  }
+}
+
+// ========= 登录状态检查 =========
+(async () => {
+  const r = await fetch('/api/admin/check');
+  const d = await r.json();
+  if (!d.isAdmin) location.href = '/admin/login';
+})();
+
+async function doLogout() {
+  await fetch('/api/admin/logout', { method:'POST' });
+  location.href = '/admin/login';
+}
+
+loadGroups();
+loadContent();
+loadRegroup();
+
+// 换组生效日期默认：下一个换组节点（3/6/9/12月的1号）
+(function() {
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  let y2 = now.getFullYear();
+  let m2 = now.getMonth() + 1; // 1-12
+  // 找下一个 月份%3==0 且 未过期的1号
+  let candidate = new Date(y2, m2 - 1, 1);
+  while (!(m2 % 3 === 0) || candidate < todayStart) {
+    m2++;
+    if (m2 > 12) { m2 = 1; y2++; }
+    candidate = new Date(y2, m2 - 1, 1);
+  }
+  document.getElementById('regroupDate').value = y2 + '-' + String(m2).padStart(2, '0') + '-01';
+})();
+
+// 初始化报表日期范围为本月1号到今天
+const today = new Date();
+const y = today.getFullYear();
+const m = String(today.getMonth() + 1).padStart(2, '0');
+const d = String(today.getDate()).padStart(2, '0');
+document.getElementById('reportStartDate').value = y + '-' + m + '-01';
+document.getElementById('reportEndDate').value = y + '-' + m + '-' + d;
+
+// ====== 月度报表 ======
+let currentReport = null;
+
+// 按姓名筛选报表行
+function filterReport() {
+  const keyword = (document.getElementById('searchName').value || '').trim();
+  const rows = document.querySelectorAll('#reportResult tbody tr');
+  if (!keyword) {
+    rows.forEach(row => row.style.display = '');
+    return;
+  }
+  rows.forEach(row => {
+    const nameCell = row.querySelector('.name-cell');
+    if (nameCell && nameCell.textContent.includes(keyword)) {
+      row.style.display = '';
+    } else {
+      row.style.display = 'none';
+    }
+  });
+}
+
+function renderReportGroupSelect() {
+  const sel = document.getElementById('reportGroupId');
+  if (groups.length === 0) { sel.innerHTML = '<option value="">请先添加群组</option>'; return; }
+  sel.innerHTML = '<option value="">全部群组</option>' + groups.map(g => `<option value="${g.id}">${g.name}</option>`).join('');
+}
+
+async function loadReport() {
+  const startDate = document.getElementById('reportStartDate').value;
+  const endDate = document.getElementById('reportEndDate').value;
+  const groupId = document.getElementById('reportGroupId').value;
+  if (!startDate || !endDate) { alert('请选择日期范围'); return; }
+  if (startDate > endDate) { alert('开始日期不能晚于结束日期'); return; }
+
+  document.getElementById('reportResult').innerHTML = '<div style="text-align:center;padding:40px;color:#999">⏳ 报表生成中...</div>';
+
+  try {
+    const params = new URLSearchParams({ startDate, endDate });
+    if (groupId) params.set('groupId', groupId);
+
+  const r = await fetch('/api/report/monthly?' + params);
+  if (r.status === 401) {
+    document.getElementById('reportResult').innerHTML = '<div class="error" style="text-align:center;padding:40px">⚠️ 登录已过期，请<a href="/admin/login">重新登录</a>后刷新页面</div>';
+    return;
+  }
+  const d = await r.json();
+  if (!d.ok) {
+    let errMsg = '加载失败';
+    if (d.msg) errMsg += '：' + d.msg;
+    else if (r.status >= 500) errMsg += '：服务器内部错误，请稍后重试';
+    document.getElementById('reportResult').innerHTML = '<div class="error">' + errMsg + ' <button onclick="loadReport()" style="margin-left:8px;padding:4px 12px;border-radius:6px;border:1px solid #5a4a9a;background:#fff;color:#5a4a9a;cursor:pointer;font-size:13px">🔄 重试</button></div>';
+    return;
+  }
+  currentReport = d;
+
+  let html = '';
+  for (const report of d.reports) {
+    const totalDays = report.dates.filter(dd => dd <= d.endDate).length;
+    const totalMembers = report.members.length;
+    const validMembers = report.members.filter(m => !m.excluded);
+    const validCount = validMembers.length;
+    const allChecked = validMembers.reduce((s, m) => s + m.normalCount, 0);
+    const allMakeup = validMembers.reduce((s, m) => s + (m.makeupUsed || 0), 0);
+    const avgRate = validCount > 0 ? Math.round(validMembers.reduce((s, m) => s + (m.rate || 0), 0) / validCount) : 0;
+
+    html += `<div class="card">`;
+    html += `<h3>${report.groupName} - ${d.startDate} ~ ${d.endDate}</h3>`;
+
+    // 团队连坐提示
+    if (report.groupFailed) {
+      html += `<div class="report-alert-fail">🚫 本组有人考核不达标，整组本月无法获得奖品！不达标人员：${report.failedMembers.join('、')}</div>`;
+    }
+
+    html += `<div class="report-summary">
+      <div class="stat">总人数 <b>${totalMembers}</b>${totalMembers > validCount ? '（参与统计 ' + validCount + '）' : ''}</div>
+      <div class="stat">应打卡天数 <b>${totalDays}</b></div>
+      <div class="stat">正常打卡 <b>${allChecked}</b></div>
+      <div class="stat">补打卡 <b>${allMakeup}</b></div>
+      <div class="stat">平均打卡率 <b>${avgRate}%</b></div>
+      <div class="stat" style="${report.groupFailed ? 'color:#e74c3c' : 'color:#27ae60'}">考核状态 <b>${report.groupFailed ? '🚫 不达标' : '✅ 达标'}</b></div>
+    </div>`;
+
+    // 预警：有预警等级的人
+    const alerts = report.members.filter(m => m.alertLevel > 0);
+    if (alerts.length > 0) {
+      const failed = alerts.filter(m => m.alertLevel === 2);
+      const risk = alerts.filter(m => m.alertLevel === 1);
+      if (failed.length > 0) {
+        html += `<div class="report-alert-fail">🔴 不达标（无法补救）：`;
+        html += failed.map(m => m.name + '（' + m.alertReason.join('、') + '）').join('；');
+        html += `</div>`;
+      }
+      if (risk.length > 0) {
+        html += `<div class="report-alert">⚠️ 风险（尚可补救）：`;
+        html += risk.map(m => m.name + '（' + m.alertReason.join('、') + '）').join('；');
+        html += `</div>`;
+      }
+    }
+
+    html += `<div class="report-table-wrap">`;
+    html += `<div style="font-size:12px;color:#888;margin-bottom:4px">💡 点击日期单元格修改打卡数据，修改完后点底部"保存全部修改"按钮一次性提交</div>`;
+    html += `<table class="report-table"><thead><tr>`;
+    html += `<th class="name-header">姓名</th>`;
+    for (const date of report.dates) {
+      const day = parseInt(date.split('-')[2]);
+      const wd = new Date(date).getDay();
+      const isWeekend = wd === 0 || wd === 6;
+      html += `<th style="${isWeekend ? 'color:#e74c3c' : ''}">${day}</th>`;
+    }
+    html += `<th>正常</th><th>补卡</th><th>打卡率</th><th>累计缺卡</th><th>达标</th>`;
+    html += `</tr></thead><tbody>`;
+
+    for (const m of report.members) {
+      let rowClass = '';
+      let icon = '';
+      if (m.alertLevel === 2) { rowClass = 'alert-cell-red'; icon = ' 🔴'; }
+      else if (m.alertLevel === 1) { rowClass = 'alert-cell'; icon = ' ⚠️'; }
+      html += `<tr${rowClass ? ' class="' + rowClass + '"' : ''}>`;
+      html += `<td class="name-cell">${m.name}${icon}</td>`;
+      for (const date of report.dates) {
+        const status = m.dailyStatus[date];
+        if (status === '✓') html += `<td class="cell-ok cell-editable" data-member-id="${m.id}" data-date="${date}" data-key="${m.id}-${date}" data-status="ok" title="点击修改">✓</td>`;
+        else if (status === '✗') html += `<td class="cell-fail cell-editable" data-member-id="${m.id}" data-date="${date}" data-key="${m.id}-${date}" data-status="fail" title="点击修改">✗</td>`;
+        else if (status === '补-读书' || status === '补-接龙' || status === '补打卡') html += `<td class="cell-makeup cell-editable" data-member-id="${m.id}" data-date="${date}" data-key="${m.id}-${date}" data-status="makeup" title="点击修改">补打卡</td>`;
+        else html += `<td class="cell-empty cell-editable" data-member-id="${m.id}" data-date="${date}" data-key="${m.id}-${date}" data-status="empty" title="点击修改">-</td>`;
+      }
+      html += `<td class="stat-col">${m.excluded ? '—' : m.normalCount}</td>`;
+      html += `<td class="stat-col" style="color:#e67e22">${m.excluded ? '—' : (m.makeupUsed || 0)}</td>`;
+      html += `<td class="stat-col">${m.excluded ? '未参与' : m.rate + '%'}</td>`;
+      html += `<td class="stat-col" style="${m.totalMissed >= 1 ? 'color:#e74c3c;font-weight:600' : ''}">${m.excluded ? '—' : m.totalMissed + '天'}</td>`;
+      html += `<td class="stat-col" style="${m.qualified ? 'color:#27ae60' : 'color:#e74c3c;font-weight:600'}">${m.excluded ? '—' : (m.qualified ? '✅' : '🚫')}</td>`;
+      html += `</tr>`;
+    }
+
+    html += `</tbody></table></div></div>`;
+  }
+
+  document.getElementById('reportResult').innerHTML = html || '<div class="empty">暂无数据</div>';
+  } catch (e) {
+    console.error('报表加载失败:', e);
+    let errMsg = e.message || '未知错误';
+    if (errMsg.includes('Failed to fetch') || errMsg.includes('NetworkError')) {
+      errMsg = '网络连接失败，请检查网络后重试';
+    } else if (errMsg.includes('Unexpected token')) {
+      errMsg = '服务器返回数据异常，请刷新页面重试';
+    }
+    document.getElementById('reportResult').innerHTML = '<div class="error" style="text-align:center;padding:40px">❌ 报表加载失败：' + errMsg + ' <button onclick="loadReport()" style="margin-left:8px;padding:4px 12px;border-radius:6px;border:1px solid #5a4a9a;background:#fff;color:#5a4a9a;cursor:pointer;font-size:13px">🔄 重试</button></div>';
+  }
+}
+
+function exportExcel() {
+  if (!currentReport || !currentReport.reports.length) {
+    alert('请先生成报表');
+    return;
+  }
+
+  // 生成CSV内容（BOM头让Excel正确识别中文）
+  let csv = '\uFEFF';
+
+  for (const report of currentReport.reports) {
+    csv += report.groupName + ' - ' + currentReport.month + '\n\n';
+
+    // 表头
+    csv += '姓名,';
+    for (const date of report.dates) {
+      csv += date.split('-')[2] + '日,';
+    }
+    csv += '正常打卡,补打卡次数,打卡率,累计缺卡,考核达标,预警等级,预警原因\n';
+
+    // 数据行
+    for (const m of report.members) {
+      csv += m.name + ',';
+      for (const date of report.dates) {
+        const status = m.dailyStatus[date];
+        if (status === '✓') csv += '✓,';
+        else if (status === '✗') csv += '✗,';
+        else if (status === '补-读书') csv += '补-读书,';
+        else if (status === '补-接龙') csv += '补-接龙,';
+        else csv += ',';
+      }
+      const alertLevelText = m.alertLevel === 2 ? '不达标' : m.alertLevel === 1 ? '风险' : '正常';
+      const rateText = m.excluded ? '未参与' : m.rate + '%';
+      csv += (m.excluded ? 0 : m.normalCount) + ',' + (m.excluded ? 0 : (m.makeupUsed || 0)) + ',' + rateText + ',' + (m.excluded ? 0 : m.totalMissed) + ',' + (m.excluded ? '未参与' : (m.qualified ? '达标' : '不达标')) + ',' + (m.excluded ? '未参与' : alertLevelText) + ',' + (m.excluded ? '报表期间未加入' : m.alertReason.join(';')) + '\n';
+    }
+    // 团队连坐标记
+    if (report.groupFailed) {
+      csv += '\n⚠️ 本组有人考核不达标，整组本月无法获得奖品！不达标人员：' + report.failedMembers.join('、') + '\n';
+    }
+    csv += '\n';
+  }
+
+  // 下载
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = '读书打卡报表_' + currentReport.startDate + '_' + currentReport.endDate + '.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+async function sendAlert() {
+  const startDate = document.getElementById('reportStartDate').value;
+  const endDate = document.getElementById('reportEndDate').value;
+  const groupId = document.getElementById('reportGroupId').value;
+
+  if (!startDate || !endDate) {
+    alert('请先选择日期范围');
+    return;
+  }
+
+  if (!confirm('确认发送预警通知到' + (groupId ? '选中群组' : '全部群组') + '？')) return;
+
+  try {
+    const res = await fetch('/api/report/send-alert', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ startDate, endDate, groupId: groupId || undefined })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      let msg = '预警通知已发送！共发送' + data.sentCount + '条消息。';
+      if (data.errors && data.errors.length > 0) {
+        msg += '\n\n部分群组发送失败：\n' + data.errors.join('\n');
+      }
+      alert(msg);
+    } else {
+      alert('发送失败：' + data.msg);
+    }
+  } catch (e) {
+    alert('发送失败：' + e.message);
+  }
+}
+
+// ========= 报表单元格点击修改（批量收集+一次性保存）=========
+let activeMenu = null;
+let pendingChanges = []; // 待保存的修改 [{memberId, date, action}]
+let pendingCellMap = {}; // key: `${memberId}-${date}` → 修改后的显示状态
+
+// 关闭菜单
+function closeEditMenu() {
+  if (activeMenu) {
+    activeMenu.remove();
+    activeMenu = null;
+  }
+}
+
+// 更新保存栏状态
+function updateSaveBar() {
+  const bar = document.getElementById('saveBar');
+  const countEl = document.getElementById('pendingCount');
+  if (pendingChanges.length > 0) {
+    bar.classList.add('show');
+    countEl.textContent = pendingChanges.length + ' 项待保存';
+  } else {
+    bar.classList.remove('show');
+  }
+  // 高亮所有待保存的单元格
+  document.querySelectorAll('.cell-pending').forEach(el => el.classList.remove('cell-pending'));
+  for (const key of Object.keys(pendingCellMap)) {
+    const cell = document.querySelector(`.cell-editable[data-key="${key}"]`);
+    if (cell) cell.classList.add('cell-pending');
+  }
+}
+
+// 取消所有待保存的修改
+function clearPendingChanges() {
+  pendingChanges = [];
+  pendingCellMap = {};
+  updateSaveBar();
+  loadReport(); // 刷新报表恢复原始状态
+}
+
+// 保存所有修改（批量提交）
+async function savePendingChanges() {
+  if (pendingChanges.length === 0) return;
+
+  const btn = document.getElementById('saveBtn');
+  btn.disabled = true;
+  btn.textContent = '保存中...';
+
+  try {
+    const res = await fetch('/api/checkins/admin-batch-update', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ changes: pendingChanges })
+    });
+    const data = await res.json();
+
+    if (data.ok) {
+      const successCount = data.results.filter(r => r.ok).length;
+      const failCount = data.results.filter(r => !r.ok).length;
+      pendingChanges = [];
+      pendingCellMap = {};
+      updateSaveBar();
+      await loadReport(); // 刷新报表
+      if (failCount > 0) {
+        const failMsgs = data.results.filter(r => !r.ok).map(r => r.msg).join('\n');
+        alert('保存完成：成功 ' + successCount + ' 项，失败 ' + failCount + ' 项\n\n失败原因：\n' + failMsgs);
+      } else {
+        alert('保存成功！共修改 ' + successCount + ' 项');
+      }
+    } else {
+      alert('保存失败：' + data.msg);
+    }
+  } catch (err) {
+    alert('保存失败：' + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '💾 保存全部修改';
+  }
+}
+
+// 点击空白处关闭菜单
+document.addEventListener('click', function(e) {
+  if (activeMenu && !activeMenu.contains(e.target)) {
+    closeEditMenu();
+  }
+});
+
+// 点击单元格弹出修改菜单
+document.addEventListener('click', function(e) {
+  const cell = e.target.closest('.cell-editable');
+  if (!cell) return;
+
+  e.preventDefault();
+  closeEditMenu();
+
+  const memberId = parseInt(cell.dataset.memberId);
+  const date = cell.dataset.date;
+  const status = cell.dataset.status;
+  const cellKey = memberId + '-' + date;
+
+  // 创建菜单
+  const menu = document.createElement('div');
+  menu.className = 'edit-menu';
+
+  let items = [];
+
+  if (status === 'empty') {
+    // 空白格（未来日期或无数据）→ 可添加
+    items.push({ label: '✓ 正常打卡', action: 'add-normal', cls: '' });
+    items.push({ label: '📝 补打卡', action: 'add-makeup', cls: '' });
+  } else if (status === 'fail') {
+    // ✗ → 可补卡或添加正常打卡
+    items.push({ label: '✓ 改为正常打卡', action: 'add-normal', cls: '' });
+    items.push({ label: '📝 补打卡', action: 'add-makeup', cls: '' });
+    items.push({ label: '✗ 未打卡', action: 'delete', cls: 'danger' });
+  } else if (status === 'ok') {
+    // ✓ → 可删除或改为补卡
+    items.push({ label: '📝 改为补打卡', action: 'add-makeup', cls: '' });
+    items.push({ label: '✗ 未打卡', action: 'delete', cls: 'danger' });
+  } else if (status === 'makeup-read' || status === 'makeup-checkin' || status === 'makeup') {
+    // 补打卡 → 可改类型或删除
+    items.push({ label: '✓ 改为正常打卡', action: 'add-normal', cls: '' });
+    items.push({ label: '✗ 未打卡', action: 'delete', cls: 'danger' });
+  }
+
+  for (const item of items) {
+    const div = document.createElement('div');
+    div.className = 'edit-menu-item' + (item.cls ? ' ' + item.cls : '');
+    div.textContent = item.label;
+    div.addEventListener('click', function() {
+      closeEditMenu();
+
+      // 移除该单元格之前的待保存修改（如果有）
+      const existIdx = pendingChanges.findIndex(c => c.memberId === memberId && c.date === date);
+      if (existIdx !== -1) pendingChanges.splice(existIdx, 1);
+
+      // 添加新的修改
+      pendingChanges.push({ memberId, date, action: item.action });
+
+      // 更新单元格的即时显示状态
+      if (item.action === 'delete') {
+        delete pendingCellMap[cellKey];
+        cell.className = 'cell-editable cell-pending cell-fail';
+        cell.textContent = '✗';
+        cell.dataset.status = 'fail';
+      } else if (item.action === 'add-normal') {
+        pendingCellMap[cellKey] = '✓';
+        cell.className = 'cell-editable cell-pending cell-ok';
+        cell.textContent = '✓';
+        cell.dataset.status = 'ok';
+      } else if (item.action === 'add-makeup') {
+        pendingCellMap[cellKey] = '补打卡';
+        cell.className = 'cell-editable cell-pending cell-makeup';
+        cell.textContent = '补打卡';
+        cell.dataset.status = 'makeup';
+      }
+
+      updateSaveBar();
+    });
+    menu.appendChild(div);
+  }
+
+  // 定位菜单
+  document.body.appendChild(menu);
+  activeMenu = menu;
+
+  const rect = cell.getBoundingClientRect();
+  let left = rect.left;
+  let top = rect.bottom + 4;
+
+  // 防止超出屏幕
+  if (left + 160 > window.innerWidth) left = window.innerWidth - 170;
+  if (top + 200 > window.innerHeight) top = rect.top - menu.offsetHeight - 4;
+
+  menu.style.left = left + 'px';
+  menu.style.top = top + 'px';
+});
+
+// ========== 成员内联编辑 ==========
+function startMemberEdit(id, el, field) {
+  el.setAttribute('data-old', el.textContent);
+  el.contentEditable = true;
+  el.focus();
+  el.style.background = '#fff';
+  el.style.border = '1px solid #1890ff';
+  el.style.padding = '0 4px';
+  el.style.borderRadius = '3px';
+  el.onblur = () => saveMemberEdit(id, el, field);
+  el.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); el.blur(); } if (e.key === 'Escape') cancelMemberEdit(el); };
+}
+async function saveMemberEdit(id, el, field) {
+  el.contentEditable = false;
+  el.style.background = ''; el.style.border = ''; el.style.padding = '';
+  const newVal = el.textContent.trim(), oldVal = el.getAttribute('data-old');
+  if (newVal === oldVal || !newVal) { el.textContent = oldVal; return; }
+  try {
+    const r = await fetch('/api/members/' + id, {
+      method: 'PUT',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(field === 'mobile' ? { mobile: newVal } : { name: newVal })
+    });
+    const d = await r.json();
+    if (!d.ok) { el.textContent = oldVal; alert(d.msg || '保存失败'); return; }
+    const card = el.closest('.group-card');
+    if (card && card.id) { const gid = parseInt(card.id.replace('group-','')); if (gid) loadMembers(gid); }
+  } catch(e) { el.textContent = oldVal; alert('网络错误'); }
+}
+function cancelMemberEdit(el) { el.textContent = el.getAttribute('data-old') || el.textContent; el.contentEditable = false; el.blur(); }
+</script>
+<div id="version-info" style="position:fixed;bottom:10px;right:10px;background:#333;color:#fff;padding:4px 8px;border-radius:4px;font-size:12px;z-index:9999">v5.12-20260828 季度换组</div></body>
+</html>
