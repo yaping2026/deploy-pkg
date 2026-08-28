@@ -6,7 +6,7 @@
 #              打卡名单/排名/换组/成员数只统计未停止成员
 #   scheduler.js 月报/日报/晚报过滤 leftDate 成员（退出当天起不再要求打卡）
 #   admin.html 成员列表新增「停止打卡/恢复打卡」按钮，删除成员弹窗改为危险警告
-#   ⚠️ 附带数据修复：恢复魏晓晴(id=27, leftDate=2026-08-01) —— 她8月初退出但被误删，
+#   ⚠️ 附带数据修复：恢复魏晓晴(id=27, leftDate=2026-08-12) —— 她8/11最后打卡、8/12退出被误删，
 #      导致三组7月报表因统计不到她而错误显示"达标"
 # 安全机制：
 #   1) CDN 多通道下载（gcore→fastly→cdn→raw）
@@ -16,7 +16,7 @@
 set +e
 
 echo "=========================================="
-echo "  v5.13 更新：停止打卡功能 + 魏晓晴恢复"
+echo "  v5.13 更新：停止打卡功能 + 魏晓晴恢复(leftDate=2026-08-12)"
 echo "=========================================="
 echo ""
 
@@ -103,11 +103,11 @@ cp /tmp/rc-v513/admin_lf.html /opt/reading-checkin/admin.html
 echo "  已备份(.bak-$TS)并替换 scheduler.js + server.js + admin.html"
 
 # [4/6] 魏晓晴数据恢复（幂等，保留历史打卡记录）
-#   背景：魏晓晴(id=27) 8月初退出读书打卡项目后被误删成员记录，
-#   导致三组7月报表统计不到她、错误显示"达标"。恢复她并标记 leftDate=2026-08-01
-#   （最后一次打卡日），这样：7月报表恢复"三组不达标（魏晓晴缺1）"，
-#   8月起她不再参与打卡/日报/月报统计。
-echo "[4/6] 恢复魏晓晴数据（leftDate=2026-08-01，幂等）..."
+#   背景：魏晓晴(id=27) 最后一次打卡 2026-08-11，2026-08-12 退出被误删，
+#   导致三组7月报表统计不到她、错误显示"达标"。恢复她并标记 leftDate=2026-08-12
+#   （退出当天），这样：8/1-8/11 的 11 天仍计入历史月份报表（含她当月缺卡天数），
+#   8/12 起她不再参与打卡/日报/月报/换组统计。
+echo "[4/6] 恢复魏晓晴数据（leftDate=2026-08-12，幂等）..."
 DATA_FILE=/opt/reading-checkin/data_latest.json
 if [ -f "$DATA_FILE" ]; then
   cp "$DATA_FILE" "$DATA_FILE.bak-$TS"
@@ -117,22 +117,22 @@ const FILE = process.argv[2];
 let data;
 try { data = JSON.parse(fs.readFileSync(FILE, 'utf8')); }
 catch (e) { console.error('❌ 读取数据文件失败:', e.message); process.exit(2); }
-const REC = { id: 27, name: '魏晓晴', groupId: 3, pin: '8293', userid: '15973744774', startDate: '2026-06-01', leftDate: '2026-08-01' };
+const REC = { id: 27, name: '魏晓晴', groupId: 3, pin: '8293', userid: '15973744774', startDate: '2026-06-01', leftDate: '2026-08-12' };
 const members = Array.isArray(data.members) ? data.members : [];
 const idx = members.findIndex(m => m && m.id === 27);
 let changed = false;
 if (idx < 0) {
   members.push(REC);
   changed = true;
-  console.log('  ✅ 已恢复魏晓晴(id=27) 并标记 leftDate=2026-08-01');
+  console.log('  ✅ 已恢复魏晓晴(id=27) 并标记 leftDate=2026-08-12');
 } else if (!members[idx].leftDate) {
-  members[idx].leftDate = '2026-08-01';
+  members[idx].leftDate = '2026-08-12';
   changed = true;
-  console.log('  ✅ 魏晓晴记录已存在，补充 leftDate=2026-08-01');
-} else if (members[idx].leftDate === '2026-08-01') {
+  console.log('  ✅ 魏晓晴记录已存在，补充 leftDate=2026-08-12');
+} else if (members[idx].leftDate === '2026-08-12') {
   console.log('  ⏭️ 魏晓晴已恢复且 leftDate 正确，跳过（幂等）');
 } else {
-  console.error('  ⚠️ 魏晓晴已有 leftDate=' + members[idx].leftDate + '，与预期(2026-08-01)不一致，不覆盖，请人工确认');
+  console.error('  ⚠️ 魏晓晴已有 leftDate=' + members[idx].leftDate + '，与预期(2026-08-12)不一致，不覆盖，请人工确认');
   process.exit(3);
 }
 if (changed) {
@@ -211,6 +211,6 @@ echo ""
 echo "=========================================="
 echo "  ✅ v5.13 部署成功！"
 echo "  1) 停止打卡功能已上线（后台成员列表→停止打卡/恢复打卡）"
-echo "  2) 魏晓晴已恢复：7月三组报表恢复为不达标（含她缺卡1次），8月起不再要求打卡"
+echo "  2) 魏晓晴已恢复：7月三组报表恢复为不达标（含她缺卡），8/1-8/11 共11天仍计入历史月份报表（8/12起不再要求打卡）"
 echo "  3) 9/2 早6点发的8月月报按新标准统计（未停止成员）"
 echo "=========================================="
