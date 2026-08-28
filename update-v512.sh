@@ -59,8 +59,38 @@ if [ "$FAIL" = "1" ]; then
 fi
 
 echo "--- [3/5] 语法检查（防止坏文件上线）---"
-node --check server.js.new 2>/dev/null && echo "  ✅ server.js 语法OK"    || { echo "  ❌ server.js 语法错误，中止"; rm -f server.js.new scheduler.js.new public/admin.html.new; exit 1; }
-node --check scheduler.js.new 2>/dev/null && echo "  ✅ scheduler.js 语法OK" || { echo "  ❌ scheduler.js 语法错误，中止"; rm -f server.js.new scheduler.js.new public/admin.html.new; exit 1; }
+# 捕获详细错误（不要简单 exit，分步给出诊断信息）
+ERR=0
+node --check server.js.new 2> /tmp/check_server.err
+if [ $? -eq 0 ]; then
+  echo "  ✅ server.js 语法OK"
+else
+  echo "  ❌ server.js 语法错误："
+  cat /tmp/check_server.err | head -8
+  ERR=1
+fi
+node --check scheduler.js.new 2> /tmp/check_sched.err
+if [ $? -eq 0 ]; then
+  echo "  ✅ scheduler.js 语法OK"
+else
+  echo "  ❌ scheduler.js 语法错误："
+  cat /tmp/check_sched.err | head -8
+  ERR=1
+fi
+if [ "$ERR" = "1" ]; then
+  # 检查文件尾是否截断/格式
+  echo ""
+  echo "  🔍 诊断信息："
+  echo "    node版本:   $(node -v 2>&1)"
+  echo "    server.js.new 字节: $(wc -c < server.js.new)"
+  echo "    server.js.new 首行: $(head -1 server.js.new | cut -c1-60)"
+  echo "    server.js.new 末行: $(tail -1 server.js.new | cut -c1-60)"
+  echo "    CRLF/LF 诊断: $(grep -c $'\r' server.js.new 2>/dev/null) CR字节"
+  echo ""
+  echo "  ⚠️ 中止。先看上面错误原因修复后再重试"
+  rm -f server.js.new scheduler.js.new public/admin.html.new
+  exit 1
+fi
 
 echo "--- [4/5] 替换文件并重启 ---"
 mv server.js.new server.js
